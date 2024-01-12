@@ -14,7 +14,6 @@
 #include <fizz/tool/FizzCommandCommon.h>
 #include <folly/FileUtil.h>
 #include <folly/String.h>
-#include <folly/base64.h>
 
 #include <fstream>
 
@@ -144,20 +143,15 @@ hpke::KEMId getKEMId(std::string kemStr) {
   throw std::runtime_error("Input doesn't match any KEM id");
 }
 
-std::string tryReadFile(const std::string& echFile) {
+folly::Optional<folly::dynamic> readECHConfigsJson(std::string echFile) {
   if (echFile.empty()) {
     throw std::runtime_error("No file provided");
   }
 
-  std::string echConfigStr;
-  if (!folly::readFile(echFile.c_str(), echConfigStr)) {
+  std::string echConfigJson;
+  if (!folly::readFile(echFile.c_str(), echConfigJson)) {
     throw std::runtime_error("Unable to read file provided");
   }
-  return echConfigStr;
-}
-
-folly::Optional<folly::dynamic> readECHConfigsJson(std::string echFile) {
-  auto echConfigJson = tryReadFile(echFile);
 
   auto json = folly::parseJson(echConfigJson);
   if (!json.isObject()) {
@@ -168,18 +162,6 @@ folly::Optional<folly::dynamic> readECHConfigsJson(std::string echFile) {
   }
 
   return json;
-}
-
-folly::Optional<ech::ECHConfigList> parseECHConfigsBase64(
-    std::string echConfigListBase64) {
-  std::vector<ech::ECHConfig> echConfigs;
-  echConfigListBase64.erase(
-      std::remove(echConfigListBase64.begin(), echConfigListBase64.end(), '\n'),
-      echConfigListBase64.cend());
-  auto configBuf =
-      folly::IOBuf::copyBuffer(folly::base64Decode(echConfigListBase64));
-  folly::io::Cursor cursor(configBuf.get());
-  return decode<ech::ECHConfigList>(cursor);
 }
 
 folly::Optional<ech::ECHConfigList> parseECHConfigs(folly::dynamic json) {
